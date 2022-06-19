@@ -1,0 +1,85 @@
+WindowManager:
+    WelcomeScreen:
+    VoiceModeChoice:
+    ChessBoard:
+
+<WelcomeScreen>
+    name: "welcome"
+    canvas.before:
+        Color:
+            rgba: (0.2,0.37,0.47,1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    FloatLayout:
+        size: root.width, root.height
+        Label:
+            pos_hint:{"x":0,"y":0.2}
+            font_size:35
+            color: 1,1,1
+            text:"Chess but VOJSD"
+        GridLayout:
+            pos_hint:{"x":0.3,"y":0.4}
+            size_hint:(0.4,0.15)
+            cols:1
+            Button:
+                background_color: (0.47,0.3,0.2,1)
+                color: (1,1,1,1)
+                text:"Single-player"
+                on_press:
+                    root.game_mode_change(0)
+                    app.root.current = "voice_mode_choice"
+                    root.manager.transition.direction = "left"
+        GridLayout:
+            pos_hint:{"x":0.3,"y":0.1}
+            size_hint:(0.4,0.15)
+            cols:1
+            Button:
+                background_color: (0.47,0.3,0.2,1)
+                color: (1,1,1,1)
+                text:"Multi-player"
+                on_press:
+                    root.game_mode_change(1)
+                    app.root.current = "voice_mode_choice"
+                    root.manager.transition.direction = "left"
+
+<VoiceModeChoice>
+    name: "voice_mode_choice"
+    canvas.before:
+        Color:
+            rgba: (0.2,0.37,0.47,1)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+    FloatLayout:
+        size: root.width, root.height
+        Label:
+            pos_hint:{"x":0,"y":0.2}
+            font_size:35
+            color: 1,1,1
+            text:"Du ju want vojsd"
+        GridLayout:
+            pos_hint:{"x":0.3,"y":0.4}
+            size_hint:(0.4,0.15)
+            cols:1
+            Button:
+                background_color: (0.47,0.3,0.2,1)
+                color: (1,1,1,1)
+                text:"nol"
+                on_press:
+                    app.root.current = "chess_board"
+                    root.manager.transition.direction = "left"
+        GridLayout:
+            pos_hint:{"x":0.3,"y":0.1}
+            size_hint:(0.4,0.15)
+            cols:1
+            Button:
+                background_color: (0.47,0.3,0.2,1)
+                color: (1,1,1,1)
+                text:"nol"
+                on_press:
+                    app.root.current = "chess_board"
+                    root.manager.transition.direction = "left"
+
+<ChessBoard>
+    name: "chess_board"
