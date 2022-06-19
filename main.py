@@ -156,7 +156,7 @@ class ChessBoard(Screen):
         self.checked_king = None
         self.multiplayer = False
         self.engine = None
-        Window.size = [1244, 700]
+        Window.size = [1280, 720]
         # Window.size = [800, 800]
         Window.bind(on_request_close=self.on_request_close)
 
