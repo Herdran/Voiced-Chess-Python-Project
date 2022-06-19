@@ -31,19 +31,19 @@ image_dir = r"data\images\chess-pieces\\"
 
 chess_engine_dir = r"data\engine\stockfish_15_win_x64_avx2\stockfish_15_x64_avx2.exe"
 
-piecies_dict = {'p': image_dir + 'BlackPawn.png',
-                'r': image_dir + 'BlackRook.png',
-                'n': image_dir + 'BlackKnight.png',
-                'b': image_dir + 'BlackBishop.png',
-                'q': image_dir + 'BlackQueen.png',
-                'k': image_dir + 'BlackKing.png',
-                'P': image_dir + 'WhitePawn.png',
-                'R': image_dir + 'WhiteRook.png',
-                'N': image_dir + 'WhiteKnight.png',
-                'B': image_dir + 'WhiteBishop.png',
-                'Q': image_dir + 'WhiteQueen.png',
-                'K': image_dir + 'WhiteKing.png',
-                }
+pieces_dict = {'p': image_dir + 'BlackPawn.png',
+               'r': image_dir + 'BlackRook.png',
+               'n': image_dir + 'BlackKnight.png',
+               'b': image_dir + 'BlackBishop.png',
+               'q': image_dir + 'BlackQueen.png',
+               'k': image_dir + 'BlackKing.png',
+               'P': image_dir + 'WhitePawn.png',
+               'R': image_dir + 'WhiteRook.png',
+               'N': image_dir + 'WhiteKnight.png',
+               'B': image_dir + 'WhiteBishop.png',
+               'Q': image_dir + 'WhiteQueen.png',
+               'K': image_dir + 'WhiteKing.png',
+               }
 
 initial_pos_dict = {'a1': 'R',
                     'b1': 'N',
@@ -120,7 +120,7 @@ def update_line(instance, *args):
     if instance.highlight_lin:
         instance.highlight_lin.width = 3 * (Window.size[1] / 800)
         instance.highlight_lin.circle = (
-        instance.center_x, instance.center_y, min(instance.width, instance.height) / 2.5)
+            instance.center_x, instance.center_y, min(instance.width, instance.height) / 2.5)
 
 
 class WelcomeScreen(Screen):
@@ -166,7 +166,7 @@ class ChessBoard(Screen):
                 coords = chr(97 + j) + str(8 - i)
                 if i in [0, 1, 6, 7]:
                     piece = initial_pos_dict[coords]
-                    image = piecies_dict[piece]
+                    image = pieces_dict[piece]
                 else:
                     piece = None
                     image = transparent_png_dir
@@ -248,19 +248,19 @@ class ChessBoard(Screen):
         self.add_widget(parent_widget)
 
         choice_boxes = BoxLayout(orientation='horizontal')
-        btn1_white = MyButton(source=piecies_dict['Q'])
+        btn1_white = MyButton(source=pieces_dict['Q'])
         btn1_white.piece = 'q'
         btn1_white.bind(on_press=self.promotion_change)
         choice_boxes.add_widget(btn1_white)
-        btn2_white = MyButton(source=piecies_dict['B'])
+        btn2_white = MyButton(source=pieces_dict['B'])
         btn2_white.piece = 'b'
         btn2_white.bind(on_press=self.promotion_change)
         choice_boxes.add_widget(btn2_white)
-        btn3_white = MyButton(source=piecies_dict['N'])
+        btn3_white = MyButton(source=pieces_dict['N'])
         btn3_white.piece = 'n'
         btn3_white.bind(on_press=self.promotion_change)
         choice_boxes.add_widget(btn3_white)
-        btn4_white = MyButton(source=piecies_dict['R'])
+        btn4_white = MyButton(source=pieces_dict['R'])
         btn4_white.piece = 'r'
         btn4_white.bind(on_press=self.promotion_change)
         choice_boxes.add_widget(btn4_white)
@@ -269,19 +269,19 @@ class ChessBoard(Screen):
                                            content=choice_boxes)
 
         choice_boxes_black = BoxLayout(orientation='horizontal')
-        btn1_black = MyButton(source=piecies_dict['q'])
+        btn1_black = MyButton(source=pieces_dict['q'])
         btn1_black.piece = 'q'
         btn1_black.bind(on_press=self.promotion_change)
         choice_boxes_black.add_widget(btn1_black)
-        btn2_black = MyButton(source=piecies_dict['b'])
+        btn2_black = MyButton(source=pieces_dict['b'])
         btn2_black.piece = 'b'
         btn2_black.bind(on_press=self.promotion_change)
         choice_boxes_black.add_widget(btn2_black)
-        btn3_black = MyButton(source=piecies_dict['n'])
+        btn3_black = MyButton(source=pieces_dict['n'])
         btn3_black.piece = 'n'
         btn3_black.bind(on_press=self.promotion_change)
         choice_boxes_black.add_widget(btn3_black)
-        btn4_black = MyButton(source=piecies_dict['r'])
+        btn4_black = MyButton(source=pieces_dict['r'])
         btn4_black.piece = 'r'
         btn4_black.bind(on_press=self.promotion_change)
         choice_boxes_black.add_widget(btn4_black)
@@ -313,7 +313,7 @@ class ChessBoard(Screen):
         for child in self.board.children:
             if child.coords[1] in ['1', '2', '7', '8']:
                 piece = initial_pos_dict[child.coords]
-                image = piecies_dict[piece]
+                image = pieces_dict[piece]
             else:
                 piece = None
                 image = transparent_png_dir
@@ -409,7 +409,7 @@ class ChessBoard(Screen):
                 self.board_sim.ep_square + (8 * (-1 if self.board_sim.turn else 1)))].source = transparent_png_dir
 
         if self.promotion_type:
-            self.last_piece_pressed.source = piecies_dict[
+            self.last_piece_pressed.source = pieces_dict[
                 self.promotion_type.upper() if self.board_sim.turn else self.promotion_type]
 
         self.curr_instance.source = self.last_piece_pressed.source
@@ -421,11 +421,11 @@ class ChessBoard(Screen):
         if self.board_sim.is_castling(move):
             if self.board_sim.is_queenside_castling(move):
                 self.board.children[7 if self.board_sim.turn else 63].source = transparent_png_dir
-                self.board.children[4 if self.board_sim.turn else 60].source = piecies_dict[
+                self.board.children[4 if self.board_sim.turn else 60].source = pieces_dict[
                     'R' if self.board_sim.turn else 'r']
             else:
                 self.board.children[0 if self.board_sim.turn else 56].source = transparent_png_dir
-                self.board.children[2 if self.board_sim.turn else 58].source = piecies_dict[
+                self.board.children[2 if self.board_sim.turn else 58].source = pieces_dict[
                     'R' if self.board_sim.turn else 'r']
 
         self.board_sim.push(move)
