@@ -118,7 +118,7 @@ def update_ellipse(instance, *args):
 
 def update_line(instance, *args):
     if instance.highlight_lin:
-        # instance.highlight_lin.width = instance.pos
+        instance.highlight_lin.width = 3 * (Window.size[1] / 800)
         instance.highlight_lin.circle = (
         instance.center_x, instance.center_y, min(instance.width, instance.height) / 2.5)
 
@@ -156,8 +156,8 @@ class ChessBoard(Screen):
         self.checked_king = None
         self.multiplayer = False
         self.engine = None
-        # Window.size = [408, 894]
-        Window.size = [800, 800]
+        Window.size = [1244, 700]
+        # Window.size = [800, 800]
         Window.bind(on_request_close=self.on_request_close)
 
         self.board = GridLayout(cols=8, spacing=0, size_hint=(.9, 1))
@@ -207,8 +207,6 @@ class ChessBoard(Screen):
         nums2.add_widget(Label(text='2'))
         nums2.add_widget(Label(text='1'))
 
-        board_nums_chars = GridLayout(cols=3, spacing=0)
-
         chars1 = BoxLayout(orientation='horizontal', size_hint=(1, .05))
         chars1.add_widget(Label(text='a'))
         chars1.add_widget(Label(text='b'))
@@ -229,6 +227,8 @@ class ChessBoard(Screen):
         chars2.add_widget(Label(text='g'))
         chars2.add_widget(Label(text='h'))
 
+        board_nums_chars = GridLayout(cols=3, spacing=0, size_hint=(.64, 1))
+
         board_nums_chars.add_widget(Label(text='', size_hint=(.05, .05)))
         board_nums_chars.add_widget(chars1)
         board_nums_chars.add_widget(Label(text='', size_hint=(.05, .05)))
@@ -239,7 +239,13 @@ class ChessBoard(Screen):
         board_nums_chars.add_widget(chars2)
         board_nums_chars.add_widget(Label(text='', size_hint=(.05, .05)))
 
-        self.add_widget(board_nums_chars)
+        infobox = BoxLayout(orientation='vertical', size_hint=(.36, 1))
+
+        parent_widget = BoxLayout(orientation='horizontal')
+        parent_widget.add_widget(board_nums_chars)
+        parent_widget.add_widget(infobox)
+
+        self.add_widget(parent_widget)
 
         choice_boxes = BoxLayout(orientation='horizontal')
         btn1_white = MyButton(source=piecies_dict['Q'])
