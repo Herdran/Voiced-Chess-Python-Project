@@ -25,9 +25,11 @@ class MyButton(ButtonBehavior, Image):
         self.highlight_lin = None
 
 
-transparent_png_dir = r"images\other\transparency.png"
+transparent_png_dir = r"data\images\other\transparency.png"
 
-image_dir = r"images\chess-pieces\\"
+image_dir = r"data\images\chess-pieces\\"
+
+chess_engine_dir = r"data\engine\stockfish_15_win_x64_avx2\stockfish_15_x64_avx2.exe"
 
 piecies_dict = {'p': image_dir + 'BlackPawn.png',
                 'r': image_dir + 'BlackRook.png',
@@ -296,8 +298,7 @@ class ChessBoard(Screen):
             self.end_engine()
 
     def start_engine(self):
-        self.engine = chess.engine.SimpleEngine.popen_uci(
-            r"engines\stockfish_15_win_x64_avx2\stockfish_15_x64_avx2.exe")
+        self.engine = chess.engine.SimpleEngine.popen_uci(chess_engine_dir)
 
     def end_engine(self):
         self.engine.quit()
