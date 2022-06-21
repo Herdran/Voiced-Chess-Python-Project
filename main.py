@@ -161,15 +161,6 @@ class WelcomeScreen(Screen):
             self.manager.get_screen('chess_board').start_engine()
 
 
-class VoiceModeChoice(Screen):
-    def voice_mode_change(self, mode):
-        pass
-        # if mode:
-        #     self.manager.get_screen('chess_board').voiced = True
-        # else:
-        #     self.manager.get_screen('chess_board').voiced = False
-
-
 def get_coords(board_coords):
     return board_coords + (7 - (board_coords % 8) * 2)
 
