@@ -11,16 +11,17 @@ from thefuzz import process
 from kivy.app import App
 from kivy.lang.builder import Builder
 from kivy.core.window import Window
+from kivy.graphics import Rectangle, Color, Ellipse, Line
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.image import Image
-from kivy.graphics import Rectangle, Color, Ellipse, Line
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.popup import Popup
 from kivy.uix.textinput import TextInput
+from kivy.clock import mainthread
 
 
 class MyButton(ButtonBehavior, Image):
@@ -319,11 +320,11 @@ class ChessBoard(Screen):
         self.tmp_speech_button = Button(text='Press me and talk')
         self.tmp_speech_button.bind(on_press=self.tmp_voice_thread_release)
 
-        self.voice_command_confirmation_button = Button(text='', disabled=True)
-        self.voice_command_confirmation_button.bind(on_press=self.voice_command_confirmation)
+        # self.voice_command_confirmation_button = Button(text='', disabled=True)
+        # self.voice_command_confirmation_button.bind(on_press=self.voice_command_confirmation)
 
         infobox_right.add_widget(self.tmp_speech_button)
-        infobox_right.add_widget(self.voice_command_confirmation_button)
+        # infobox_right.add_widget(self.voice_command_confirmation_button)
 
         parent_widget = BoxLayout(orientation='horizontal')
 
@@ -389,10 +390,10 @@ class ChessBoard(Screen):
         instance.disabled = True
         self.event_obj.set()
 
-    def voice_command_confirmation(self, instance):
-        instance.disabled = True
-        instance.text = ''
-        self.chess_move(False, self.proposed_move)
+    # def voice_command_confirmation(self, instance):
+    #     instance.disabled = True
+    #     instance.text = ''
+    #     self.chess_move(False, self.proposed_move)
 
     def voice_recognition_func(self):
         while True:
@@ -453,10 +454,10 @@ class ChessBoard(Screen):
                         self.proposed_move = chess.Move.from_uci(from_square[0][0] + to_square[0][0] + promotion)
 
                         if self.proposed_move in self.legal_moves:
-                            self.voice_command_confirmation_button.text = str(self.proposed_move)
-                            self.voice_command_confirmation_button.disabled = False
-                            pass
-                            # self.chess_move(False, self.proposed_move)
+                            # self.voice_command_confirmation_button.text = str(self.proposed_move)
+                            # self.voice_command_confirmation_button.disabled = False
+                            # pass
+                            self.chess_move(False, self.proposed_move)
                         elif promotion == '' and chess.Move.from_uci(
                                 from_square[0][0] + to_square[0][0] + 'q') in self.legal_moves:
                             TTS.say('Wybierz promocję')
@@ -466,16 +467,10 @@ class ChessBoard(Screen):
                             promotion = process.extract(text, piece_names)
                             if promotion[0][1] >= 90:
                                 self.promotion_type = chess.piece_symbol(piece_names_dict[promotion[0][0]])
-                                self.voice_command_confirmation_button.text = str(self.proposed_move) + self.promotion_type
-                                self.voice_command_confirmation_button.disabled = False
-                                pass
-                                # self.chess_move(False, self.proposed_move)
-                            # else:
-                            #     TTS.say('Nie rozumiem')
-                            #     TTS.runAndWait()
-                        # else:
-                        #     TTS.say('Nie rozumiem')
-                        #     TTS.runAndWait()
+                                # self.voice_command_confirmation_button.text = str(self.proposed_move) + self.promotion_type
+                                # self.voice_command_confirmation_button.disabled = False
+                                # pass
+                                self.chess_move(False, self.proposed_move)
                 except sr.UnknownValueError:
                     TTS.say('Nie rozumiem')
                     TTS.runAndWait()
@@ -619,6 +614,7 @@ class ChessBoard(Screen):
             btn.highlight = Rectangle(size=btn.size, pos=btn.pos)
         btn.bind(pos=update_rect, size=update_rect)
 
+    @mainthread
     def chess_move(self, bot=False, move=None):
         if move:
             if self.promotion_type:
