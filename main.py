@@ -616,6 +616,11 @@ class ChessBoard(Screen):
 
     @mainthread
     def chess_move(self, bot=False, move=None):
+        if self.colored_pieces:
+            self.highlight_recolor(self.colored_pieces, False)
+            self.colored_pieces = []
+        if self.last_piece_pressed:
+            self.highlight_recolor([self.last_piece_pressed.coords], False, True)
         if move:
             if self.promotion_type:
                 move = chess.Move.from_uci(
