@@ -1,6 +1,8 @@
 import chess
 import chess.engine
 
+import threading
+
 import pyttsx3 as tts
 import speech_recognition as sr
 
@@ -93,7 +95,7 @@ square_names = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'b1', 'b2', 'b3'
                 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8',
                 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8']
 
-promotions = ['q', 'b', 'n', 'r']
+promotion_names = ['q', 'b', 'n', 'r']
 
 TTS = tts.init()
 TTS.setProperty('volume', 0.7)
@@ -101,6 +103,7 @@ TTS.setProperty('rate', 190)
 TTS.setProperty('voice', 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\TTS_MS_PL-PL_PAULINA_11.0')
 
 STT = sr.Recognizer()
+
 
 def get_color(num, highlight=False, clicked=False):
     if clicked:
@@ -158,10 +161,11 @@ class WelcomeScreen(Screen):
 
 class VoiceModeChoice(Screen):
     def voice_mode_change(self, mode):
-        if mode:
-            self.manager.get_screen('chess_board').voiced = True
-        else:
-            self.manager.get_screen('chess_board').voiced = False
+        pass
+        # if mode:
+        #     self.manager.get_screen('chess_board').voiced = True
+        # else:
+        #     self.manager.get_screen('chess_board').voiced = False
 
 
 def get_coords(board_coords):
@@ -183,11 +187,17 @@ class ChessBoard(Screen):
         self.curr_instance = None
         self.checked_king = None
         self.multiplayer = False
-        self.voiced = False
         self.engine = None
         self.white_beaten = 0
         self.black_beaten = 0
         self.proposed_move = None
+        self.wait_flag = False
+        self.request_close = False
+        self.request_close_wait = False
+        self.event_obj = None
+        self.voice_thread = threading.Thread(target=self.voice_recognition_func, args=())
+        self.voice_thread.start()
+
         Window.size = [1280, 720]
         Window.bind(on_request_close=self.on_request_close)
 
@@ -272,7 +282,7 @@ class ChessBoard(Screen):
         board_nums_chars_input_space = BoxLayout(orientation='vertical', size_hint=(.54, 1))
 
         text_input = TextInput(text='', multiline=False, size_hint=(1, .05))
-        text_input.bind(on_text_validate=self.voice_mode_func)
+        text_input.bind(on_text_validate=self.text_input)
 
         board_nums_chars_input_space.add_widget(board_nums_chars)
         board_nums_chars_input_space.add_widget(text_input)
@@ -301,9 +311,8 @@ class ChessBoard(Screen):
         infobox_right = BoxLayout(orientation='vertical', size_hint=(.23, 1))
 
         tmp_speech_button = Button(text='Press me and talk')
-        tmp_speech_button.bind(on_press=self.voice_recognition_func)
+        tmp_speech_button.bind(on_press=self.tmp_voice_thread_release)
         infobox_right.add_widget(tmp_speech_button)
-
 
         parent_widget = BoxLayout(orientation='horizontal')
 
@@ -365,51 +374,104 @@ class ChessBoard(Screen):
         self.popup_game_end = Popup(title='Depends', size_hint=(None, None), size=(300, 200),
                                     background_color=(1, 1, 1, 1), content=choice_boxes_game_end)
 
-    def voice_recognition_func(self, *args):
-        with sr.Microphone() as source:
-            audio = STT.listen(source)
-            try:
-                text = STT.recognize_google(audio, language='pl_PL')
-                TTS.say(text)
-                TTS.runAndWait()
-                self.voice_mode_func(text, True)
-            except sr.UnknownValueError:
-                TTS.say('Nie rozumiem, spróbuj ponownie')
-                TTS.runAndWait()
-            except sr.RequestError as e:
-                print('error:', e)
+    def tmp_voice_thread_release(self, *args):
+        self.event_obj.set()
 
-    def voice_mode_func(self, instance, text_input=False):
-        if self.voiced:
-            if text_input:
-                txt = instance
-            else:
-                txt = instance.text
-                instance.text = ''
-            if txt == '':
-                pass
-            from_square = process.extract(txt[0:2], square_names)
-            to_square = process.extract(txt[2:], square_names)
+    def voice_recognition_func(self):
+        while True:
+            # print("wait?")
+            self.event_obj = threading.Event()
+            self.event_obj.wait()
+            if self.request_close:
+                break
 
-            # print(from_square, to_square)
+            self.request_close_wait = True
+            with sr.Microphone() as source:
+                try:
+                    audio = STT.listen(source, timeout=3, phrase_time_limit=3)
+                    text = STT.recognize_google(audio, language='pl_PL')
+                    # print(text)
+                    # print(text)
+                    # TTS.say(text)
+                    # TTS.runAndWait()
 
-            if from_square[0][1] < 90 or to_square[0][1] < 90 or from_square[0][0] == to_square[0][0]:
-                pass
-            else:
-                self.proposed_move = chess.Move.from_uci(from_square[0][0] + to_square[0][0])
+                    from_square = process.extract(text[0:2], square_names)
+                    to_square = process.extract(text[2:], square_names)
+                    promotion = process.extract(text[4:], promotion_names)
 
-                if self.proposed_move in self.legal_moves:
-                    self.chess_move(False, self.proposed_move)
-                elif chess.Move.from_uci(from_square[0][0] + to_square[0][0] + 'q') in self.legal_moves:
-                    if self.board_sim.turn:
-                        self.popup_white_promotion.open()
+                    if promotion[0][1] < 100:
+                        promotion = ''
                     else:
-                        self.popup_black_promotion.open()
+                        promotion = promotion[0][0]
+
+                    # print(from_square, to_square)
+
+                    if from_square[0][1] < 90 or to_square[0][1] < 90 or from_square[0][0] == to_square[0][0]:
+                        TTS.say('Nie rozumiem, spróbuj ponownie')
+                        TTS.runAndWait()
+                    else:
+                        self.proposed_move = chess.Move.from_uci(from_square[0][0] + to_square[0][0] + promotion)
+
+                        if self.proposed_move in self.legal_moves:
+                            self.chess_move(False, self.proposed_move)
+                        elif promotion == '' and chess.Move.from_uci(from_square[0][0] + to_square[0][0] + 'q') in self.legal_moves:
+                            TTS.say('Wybierz promocję')
+                            TTS.runAndWait()
+                            audio = STT.listen(source, timeout=3, phrase_time_limit=3)
+                            text = STT.recognize_google(audio, language='pl_PL')
+                            promotion = process.extract(text[2:], promotion_names)
+                            if promotion[0][1] < 100:
+                                promotion = ''
+                            else:
+                                promotion = promotion[0][0]
+                            self.proposed_move = chess.Move.from_uci(
+                                from_square[0][0] + to_square[0][0] + promotion)
+                            if self.proposed_move in self.legal_moves:
+                                self.chess_move(False, self.proposed_move)
+                            else:
+                                TTS.say('Nie rozumiem, spróbuj ponownie')
+                                TTS.runAndWait()
+                except sr.UnknownValueError:
+                    TTS.say('Nie rozumiem, spróbuj ponownie')
+                    TTS.runAndWait()
+                    self.proposed_move = None
+                except sr.RequestError as e:
+                    pass
+                    # print('error:', e)
+            self.request_close_wait = False
+
+    def text_input(self, instance, text_input=False):
+        if not text_input:
+            txt = instance
+        else:
+            txt = instance.text
+            instance.text = ''
+        if txt == '':
+            pass
+        from_square = process.extract(txt[0:2], square_names)
+        to_square = process.extract(txt[2:], square_names)
+
+        if from_square[0][1] < 90 or to_square[0][1] < 90 or from_square[0][0] == to_square[0][0]:
+            pass
+        else:
+            self.proposed_move = chess.Move.from_uci(from_square[0][0] + to_square[0][0])
+
+            if self.proposed_move in self.legal_moves:
+                self.chess_move(False, self.proposed_move)
+            elif chess.Move.from_uci(from_square[0][0] + to_square[0][0] + 'q') in self.legal_moves:
+                if self.board_sim.turn:
+                    self.popup_white_promotion.open()
+                else:
+                    self.popup_black_promotion.open()
 
     def on_request_close(self, *args, **kwargs):
-        self.voiced = False
+        if self.request_close_wait:
+            return True
+        self.request_close = True
+        self.event_obj.set()
         if self.engine:
             self.end_engine()
+        self.voice_thread.join()
 
     def start_engine(self):
         self.engine = chess.engine.SimpleEngine.popen_uci(chess_engine_dir)
@@ -450,7 +512,6 @@ class ChessBoard(Screen):
         self.legal_moves = list(self.board_sim.legal_moves)
 
     def game_end(self, instance):
-        self.voiced = False
         if instance.text == 'Main Menu':
             self.manager.current = 'welcome'
         self.game_reset()
@@ -514,7 +575,8 @@ class ChessBoard(Screen):
     def chess_move(self, bot=False, move=None):
         if move:
             if self.promotion_type:
-                move = chess.Move.from_uci(chess.square_name(move.from_square) + chess.square_name(move.to_square) + self.promotion_type)
+                move = chess.Move.from_uci(
+                    chess.square_name(move.from_square) + chess.square_name(move.to_square) + self.promotion_type)
             self.last_piece_pressed = self.board.children[get_coords(move.from_square)]
             self.curr_instance = self.board.children[get_coords(move.to_square)]
         elif bot:
@@ -539,7 +601,8 @@ class ChessBoard(Screen):
                 self.infobox_left.children[0].children[self.white_beaten].source = self.curr_instance.source
                 self.white_beaten += 1
             else:
-                self.infobox_left.children[2].children[self.black_beaten + (4 * (3 - (self.black_beaten // 4) * 2))].source = self.curr_instance.source
+                self.infobox_left.children[2].children[
+                    self.black_beaten + (4 * (3 - (self.black_beaten // 4) * 2))].source = self.curr_instance.source
                 self.black_beaten += 1
         self.curr_instance.source = self.last_piece_pressed.source
         self.last_piece_pressed.source = transparent_png_dir
