@@ -403,7 +403,7 @@ class ChessBoard(Screen):
                     piece_name = process.extract(text, piece_names)
                     to_square = process.extract(text[2:], square_names)
                     promotion = process.extract(text[4:], promotion_names)
-                    
+
                     if promotion[0][1] < 100:
                         promotion = ''
                     else:
@@ -452,11 +452,11 @@ class ChessBoard(Screen):
                             TTS.runAndWait()
                             audio = STT.listen(source, timeout=3, phrase_time_limit=3)
                             text = STT.recognize_google(audio, language='pl_PL')
-                            promotion = process.extract(text[2:], promotion_names)
-                            if promotion[0][1] < 100:
+                            promotion = process.extract(text, piece_names)
+                            if promotion[0][1] < 90:
                                 promotion = ''
                             else:
-                                promotion = promotion[0][0]
+                                promotion = chess.piece_symbol(piece_names_dict[promotion[0][0]])
                             self.proposed_move = chess.Move.from_uci(
                                 from_square[0][0] + to_square[0][0] + promotion)
                             if self.proposed_move in self.legal_moves:
