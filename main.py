@@ -95,7 +95,20 @@ square_names = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'b1', 'b2', 'b3'
                 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8',
                 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8']
 
-piece_names = ['pionek']
+piece_names = ['pionek', 'pionka', 'pionkiem', 'pion', 'pionem', 'wieża', 'wieżę', 'wieżą', 'skoczek', 'skoczka',
+               'skoczkiem', 'koń', 'konia', 'koniem', 'konik', 'konikiem', 'goniec', 'gońca', 'gońcem', 'laufer',
+               'laufera', 'lauferem', 'biskup', 'biskupa', 'biskupem', 'królowa', 'królową', 'królówka', 'królówką',
+               'hetman', 'hetmana', 'hetmanem', 'król', 'króla', 'królem']
+
+piece_names_dict = {'pionek': chess.PAWN, 'pionka': chess.PAWN, 'pionkiem': chess.PAWN, 'pion': chess.PAWN,
+                    'pionem': chess.PAWN, 'wieża': chess.ROOK, 'wieżę': chess.ROOK, 'wieżą': chess.ROOK,
+                    'skoczek': chess.KNIGHT, 'skoczka': chess.KNIGHT,'skoczkiem': chess.KNIGHT, 'koń': chess.KNIGHT,
+                    'konia': chess.KNIGHT, 'koniem': chess.KNIGHT, 'konik': chess.KNIGHT, 'konikiem': chess.KNIGHT,
+                    'goniec': chess.BISHOP, 'gońca': chess.BISHOP, 'gońcem': chess.BISHOP, 'laufer': chess.BISHOP,
+                    'laufera': chess.BISHOP, 'lauferem': chess.BISHOP, 'biskup': chess.BISHOP, 'biskupa': chess.BISHOP,
+                    'biskupem': chess.BISHOP, 'królowa': chess.QUEEN, 'królową': chess.QUEEN, 'królówka': chess.QUEEN,
+                    'królówką': chess.QUEEN, 'hetman': chess.QUEEN, 'hetmana': chess.QUEEN, 'hetmanem': chess.QUEEN,
+                    'król': chess.KING, 'króla': chess.KING, 'królem': chess.KING}
 
 promotion_names = ['q', 'b', 'n', 'r']
 
@@ -390,13 +403,13 @@ class ChessBoard(Screen):
                     piece_name = process.extract(text, piece_names)
                     to_square = process.extract(text[2:], square_names)
                     promotion = process.extract(text[4:], promotion_names)
-
+                    
                     if promotion[0][1] < 100:
                         promotion = ''
                     else:
                         promotion = promotion[0][0]
 
-                    if (from_square[0][1] < 90 and piece_name[0][1] < 90) or to_square[0][1] < 90\
+                    if (from_square[0][1] < 90 and piece_name[0][1] < 90) or to_square[0][1] < 90 \
                             or from_square[0][0] == to_square[0][0]:
                         TTS.say('Nie rozumiem, spróbuj ponownie')
                         TTS.runAndWait()
@@ -405,7 +418,7 @@ class ChessBoard(Screen):
                         # print(piece_name, to_square)
                         if piece_name[0][1] >= 80 and to_square[0][1] >= 90:
                             # print("aa")
-                            possible_pieces = list(self.board_sim.pieces(chess.PAWN, self.board_sim.turn))
+                            possible_pieces = list(self.board_sim.pieces(piece_names_dict[piece_name[0][0]], self.board_sim.turn))
 
                             matching = []
 
