@@ -35,22 +35,22 @@ class MyButton(ButtonBehavior, Image):
 
 transparent_png_dir = r"data\images\other\transparency.png"
 
-image_dir = r"data\images\chess-pieces\\"
+image_dir = r"data\images\chess-pieces"
 
 chess_engine_dir = r"data\engine\stockfish_15_win_x64_avx2\stockfish_15_x64_avx2.exe"
 
-pieces_dict = {'p': image_dir + 'BlackPawn.png',
-               'r': image_dir + 'BlackRook.png',
-               'n': image_dir + 'BlackKnight.png',
-               'b': image_dir + 'BlackBishop.png',
-               'q': image_dir + 'BlackQueen.png',
-               'k': image_dir + 'BlackKing.png',
-               'P': image_dir + 'WhitePawn.png',
-               'R': image_dir + 'WhiteRook.png',
-               'N': image_dir + 'WhiteKnight.png',
-               'B': image_dir + 'WhiteBishop.png',
-               'Q': image_dir + 'WhiteQueen.png',
-               'K': image_dir + 'WhiteKing.png',
+pieces_dict = {'p': image_dir + '\BlackPawn.png',
+               'r': image_dir + '\BlackRook.png',
+               'n': image_dir + '\BlackKnight.png',
+               'b': image_dir + '\BlackBishop.png',
+               'q': image_dir + '\BlackQueen.png',
+               'k': image_dir + '\BlackKing.png',
+               'P': image_dir + '\WhitePawn.png',
+               'R': image_dir + '\WhiteRook.png',
+               'N': image_dir + '\WhiteKnight.png',
+               'B': image_dir + '\WhiteBishop.png',
+               'Q': image_dir + '\WhiteQueen.png',
+               'K': image_dir + '\WhiteKing.png',
                }
 
 initial_pos_dict = {'a1': 'R',
@@ -102,7 +102,7 @@ piece_names = ['pionek', 'pionka', 'pionkiem', 'pion', 'pionem', 'wieża', 'wie�
 
 piece_names_dict = {'pionek': chess.PAWN, 'pionka': chess.PAWN, 'pionkiem': chess.PAWN, 'pion': chess.PAWN,
                     'pionem': chess.PAWN, 'wieża': chess.ROOK, 'wieżę': chess.ROOK, 'wieżą': chess.ROOK,
-                    'skoczek': chess.KNIGHT, 'skoczka': chess.KNIGHT,'skoczkiem': chess.KNIGHT, 'koń': chess.KNIGHT,
+                    'skoczek': chess.KNIGHT, 'skoczka': chess.KNIGHT, 'skoczkiem': chess.KNIGHT, 'koń': chess.KNIGHT,
                     'konia': chess.KNIGHT, 'koniem': chess.KNIGHT, 'konik': chess.KNIGHT, 'konikiem': chess.KNIGHT,
                     'goniec': chess.BISHOP, 'gońca': chess.BISHOP, 'gońcem': chess.BISHOP, 'laufer': chess.BISHOP,
                     'laufera': chess.BISHOP, 'lauferem': chess.BISHOP, 'biskup': chess.BISHOP, 'biskupa': chess.BISHOP,
@@ -316,9 +316,14 @@ class ChessBoard(Screen):
 
         infobox_right = BoxLayout(orientation='vertical', size_hint=(.23, 1))
 
-        tmp_speech_button = Button(text='Press me and talk')
-        tmp_speech_button.bind(on_press=self.tmp_voice_thread_release)
-        infobox_right.add_widget(tmp_speech_button)
+        self.tmp_speech_button = Button(text='Press me and talk')
+        self.tmp_speech_button.bind(on_press=self.tmp_voice_thread_release)
+
+        self.voice_command_confirmation_button = Button(text='', disabled=True)
+        self.voice_command_confirmation_button.bind(on_press=self.voice_command_confirmation)
+
+        infobox_right.add_widget(self.tmp_speech_button)
+        infobox_right.add_widget(self.voice_command_confirmation_button)
 
         parent_widget = BoxLayout(orientation='horizontal')
 
@@ -380,12 +385,17 @@ class ChessBoard(Screen):
         self.popup_game_end = Popup(title='Depends', size_hint=(None, None), size=(300, 200),
                                     background_color=(1, 1, 1, 1), content=choice_boxes_game_end)
 
-    def tmp_voice_thread_release(self, *args):
+    def tmp_voice_thread_release(self, instance):
+        instance.disabled = True
         self.event_obj.set()
+
+    def voice_command_confirmation(self, instance):
+        instance.disabled = True
+        instance.text = ''
+        self.chess_move(False, self.proposed_move)
 
     def voice_recognition_func(self):
         while True:
-            # print("wait?")
             self.event_obj = threading.Event()
             self.event_obj.wait()
             if self.request_close:
@@ -396,14 +406,11 @@ class ChessBoard(Screen):
                 try:
                     audio = STT.listen(source, timeout=3, phrase_time_limit=3)
                     text = STT.recognize_google(audio, language='pl_PL')
-                    # print(text)
-                    # text = 'pionek na f4'
 
                     from_square = process.extract(text[0:2], square_names)
                     piece_name = process.extract(text, piece_names)
                     to_square = process.extract(text[2:], square_names)
                     promotion = process.extract(text[4:], promotion_names)
-
                     if promotion[0][1] < 100:
                         promotion = ''
                     else:
@@ -411,14 +418,13 @@ class ChessBoard(Screen):
 
                     if (from_square[0][1] < 90 and piece_name[0][1] < 90) or to_square[0][1] < 90 \
                             or from_square[0][0] == to_square[0][0]:
-                        TTS.say('Nie rozumiem, spróbuj ponownie')
-                        TTS.runAndWait()
+                        pass
+                        # TTS.say('Nie rozumiem')
+                        # TTS.runAndWait()
                     else:
-                        # print("a")
-                        # print(piece_name, to_square)
-                        if piece_name[0][1] >= 80 and to_square[0][1] >= 90:
-                            # print("aa")
-                            possible_pieces = list(self.board_sim.pieces(piece_names_dict[piece_name[0][0]], self.board_sim.turn))
+                        if piece_name[0][1] >= 90 and to_square[0][1] >= 90:
+                            possible_pieces = list(
+                                self.board_sim.pieces(piece_names_dict[piece_name[0][0]], self.board_sim.turn))
 
                             matching = []
 
@@ -435,17 +441,22 @@ class ChessBoard(Screen):
                                 audio = STT.listen(source, timeout=3, phrase_time_limit=3)
                                 text = STT.recognize_google(audio, language='pl_PL')
                                 # text = 'e3'
+                                # print(text)
                                 from_square = process.extract(text, square_names)
                                 if from_square[0][1] < 90 or from_square[0][0] == to_square[0][0]:
-                                    TTS.say('Nie rozumiem, spróbuj ponownie')
-                                    TTS.runAndWait()
-                            else:
+                                    break
+                                    # TTS.say('Nie rozumiem, spróbuj ponownie2')
+                                    # TTS.runAndWait()
+                            elif len(matching) == 1:
                                 from_square = [[matching[0][:2]]]  # just don't question it
 
                         self.proposed_move = chess.Move.from_uci(from_square[0][0] + to_square[0][0] + promotion)
 
                         if self.proposed_move in self.legal_moves:
-                            self.chess_move(False, self.proposed_move)
+                            self.voice_command_confirmation_button.text = str(self.proposed_move)
+                            self.voice_command_confirmation_button.disabled = False
+                            pass
+                            # self.chess_move(False, self.proposed_move)
                         elif promotion == '' and chess.Move.from_uci(
                                 from_square[0][0] + to_square[0][0] + 'q') in self.legal_moves:
                             TTS.say('Wybierz promocję')
@@ -453,28 +464,27 @@ class ChessBoard(Screen):
                             audio = STT.listen(source, timeout=3, phrase_time_limit=3)
                             text = STT.recognize_google(audio, language='pl_PL')
                             promotion = process.extract(text, piece_names)
-                            if promotion[0][1] < 90:
-                                promotion = ''
-                            else:
-                                promotion = chess.piece_symbol(piece_names_dict[promotion[0][0]])
-                            self.proposed_move = chess.Move.from_uci(
-                                from_square[0][0] + to_square[0][0] + promotion)
-                            if self.proposed_move in self.legal_moves:
-                                self.chess_move(False, self.proposed_move)
-                            else:
-                                TTS.say('Nie rozumiem, spróbuj ponownie')
-                                TTS.runAndWait()
-                        else:
-                            TTS.say('Nie rozumiem, spróbuj ponownie')
-                            TTS.runAndWait()
+                            if promotion[0][1] >= 90:
+                                self.promotion_type = chess.piece_symbol(piece_names_dict[promotion[0][0]])
+                                self.voice_command_confirmation_button.text = str(self.proposed_move) + self.promotion_type
+                                self.voice_command_confirmation_button.disabled = False
+                                pass
+                                # self.chess_move(False, self.proposed_move)
+                            # else:
+                            #     TTS.say('Nie rozumiem')
+                            #     TTS.runAndWait()
+                        # else:
+                        #     TTS.say('Nie rozumiem')
+                        #     TTS.runAndWait()
                 except sr.UnknownValueError:
-                    TTS.say('Nie rozumiem, spróbuj ponownie')
+                    TTS.say('Nie rozumiem')
                     TTS.runAndWait()
-                    self.proposed_move = None
                 except sr.RequestError as e:
                     pass
                     # print('error:', e)
+
             self.request_close_wait = False
+            self.tmp_speech_button.disabled = False
 
     def text_input(self, instance):
         txt = instance.text
@@ -574,6 +584,10 @@ class ChessBoard(Screen):
             if not mode:
                 while len(btn.canvas.before.children) > 3:
                     btn.canvas.before.children.pop()
+                if btn.piece in ['k', 'K'] and self.board_sim.is_check():
+                    with btn.canvas.before:
+                        Color(1, 0, 0, 1)
+                        btn.highlight_rect = Rectangle(size=btn.size, pos=btn.pos)
             else:
                 with btn.canvas.before:
                     if clicked:
@@ -637,8 +651,13 @@ class ChessBoard(Screen):
                 self.infobox_left.children[2].children[
                     self.black_beaten + (4 * (3 - (self.black_beaten // 4) * 2))].source = self.curr_instance.source
                 self.black_beaten += 1
+
+        # print(self.curr_instance.source)
+
         self.curr_instance.source = self.last_piece_pressed.source
         self.last_piece_pressed.source = transparent_png_dir
+
+        # print(self.curr_instance.source)
 
         if self.board_sim.is_check():
             self.king_check_highlight(True)
@@ -663,6 +682,7 @@ class ChessBoard(Screen):
         self.promotion = False
         self.last_piece_pressed = None
         self.proposed_move = None
+        self.promotion_type = ''
 
         if self.board_sim.outcome():
             if self.board_sim.outcome().winner:
