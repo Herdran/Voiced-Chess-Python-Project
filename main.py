@@ -95,6 +95,8 @@ square_names = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'b1', 'b2', 'b3'
                 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8',
                 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8']
 
+piece_names = ['pionek']
+
 promotion_names = ['q', 'b', 'n', 'r']
 
 TTS = tts.init()
@@ -391,11 +393,10 @@ class ChessBoard(Screen):
                     audio = STT.listen(source, timeout=3, phrase_time_limit=3)
                     text = STT.recognize_google(audio, language='pl_PL')
                     # print(text)
-                    # print(text)
-                    # TTS.say(text)
-                    # TTS.runAndWait()
+                    # text = 'pionek na f4'
 
                     from_square = process.extract(text[0:2], square_names)
+                    piece_name = process.extract(text, piece_names)
                     to_square = process.extract(text[2:], square_names)
                     promotion = process.extract(text[4:], promotion_names)
 
@@ -404,17 +405,45 @@ class ChessBoard(Screen):
                     else:
                         promotion = promotion[0][0]
 
-                    # print(from_square, to_square)
-
-                    if from_square[0][1] < 90 or to_square[0][1] < 90 or from_square[0][0] == to_square[0][0]:
+                    if (from_square[0][1] < 90 and piece_name[0][1] < 90) or to_square[0][1] < 90\
+                            or from_square[0][0] == to_square[0][0]:
                         TTS.say('Nie rozumiem, spróbuj ponownie')
                         TTS.runAndWait()
                     else:
+                        # print("a")
+                        # print(piece_name, to_square)
+                        if piece_name[0][1] >= 80 and to_square[0][1] >= 90:
+                            # print("aa")
+                            possible_pieces = list(self.board_sim.pieces(chess.PAWN, self.board_sim.turn))
+
+                            matching = []
+
+                            for square_with_piece in possible_pieces:
+                                tmp = [str(s)[:2] for s in self.legal_moves if
+                                       chess.square_name(square_with_piece) in str(s)[:2]
+                                       and to_square[0][0] in str(s)[2:4]]
+                                if tmp:
+                                    matching.append(tmp[0])
+
+                            if len(matching) > 1:
+                                TTS.say('Sprecyzuj lokalizację figury')
+                                TTS.runAndWait()
+                                audio = STT.listen(source, timeout=3, phrase_time_limit=3)
+                                text = STT.recognize_google(audio, language='pl_PL')
+                                # text = 'e3'
+                                from_square = process.extract(text, square_names)
+                                if from_square[0][1] < 90 or from_square[0][0] == to_square[0][0]:
+                                    TTS.say('Nie rozumiem, spróbuj ponownie')
+                                    TTS.runAndWait()
+                            else:
+                                from_square = [[matching[0][:2]]]  # just don't question it
+
                         self.proposed_move = chess.Move.from_uci(from_square[0][0] + to_square[0][0] + promotion)
 
                         if self.proposed_move in self.legal_moves:
                             self.chess_move(False, self.proposed_move)
-                        elif promotion == '' and chess.Move.from_uci(from_square[0][0] + to_square[0][0] + 'q') in self.legal_moves:
+                        elif promotion == '' and chess.Move.from_uci(
+                                from_square[0][0] + to_square[0][0] + 'q') in self.legal_moves:
                             TTS.say('Wybierz promocję')
                             TTS.runAndWait()
                             audio = STT.listen(source, timeout=3, phrase_time_limit=3)
@@ -431,6 +460,9 @@ class ChessBoard(Screen):
                             else:
                                 TTS.say('Nie rozumiem, spróbuj ponownie')
                                 TTS.runAndWait()
+                        else:
+                            TTS.say('Nie rozumiem, spróbuj ponownie')
+                            TTS.runAndWait()
                 except sr.UnknownValueError:
                     TTS.say('Nie rozumiem, spróbuj ponownie')
                     TTS.runAndWait()
@@ -440,12 +472,9 @@ class ChessBoard(Screen):
                     # print('error:', e)
             self.request_close_wait = False
 
-    def text_input(self, instance, text_input=False):
-        if not text_input:
-            txt = instance
-        else:
-            txt = instance.text
-            instance.text = ''
+    def text_input(self, instance):
+        txt = instance.text
+        instance.text = ''
         if txt == '':
             pass
         from_square = process.extract(txt[0:2], square_names)
