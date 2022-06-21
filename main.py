@@ -1,6 +1,9 @@
 import chess
 import chess.engine
 
+import pyttsx3 as tts
+import speech_recognition as sr
+
 from thefuzz import process
 
 from kivy.app import App
@@ -92,6 +95,12 @@ square_names = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'b1', 'b2', 'b3'
 
 promotions = ['q', 'b', 'n', 'r']
 
+TTS = tts.init()
+TTS.setProperty('volume', 0.7)
+TTS.setProperty('rate', 190)
+TTS.setProperty('voice', 'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\TTS_MS_PL-PL_PAULINA_11.0')
+
+STT = sr.Recognizer()
 
 def get_color(num, highlight=False, clicked=False):
     if clicked:
@@ -263,7 +272,7 @@ class ChessBoard(Screen):
         board_nums_chars_input_space = BoxLayout(orientation='vertical', size_hint=(.54, 1))
 
         text_input = TextInput(text='', multiline=False, size_hint=(1, .05))
-        text_input.bind(on_text_validate=self.voice_mode_loop)
+        text_input.bind(on_text_validate=self.voice_mode_func)
 
         board_nums_chars_input_space.add_widget(board_nums_chars)
         board_nums_chars_input_space.add_widget(text_input)
@@ -291,7 +300,13 @@ class ChessBoard(Screen):
 
         infobox_right = BoxLayout(orientation='vertical', size_hint=(.23, 1))
 
+        tmp_speech_button = Button(text='Press me and talk')
+        tmp_speech_button.bind(on_press=self.voice_recognition_func)
+        infobox_right.add_widget(tmp_speech_button)
+
+
         parent_widget = BoxLayout(orientation='horizontal')
+
         parent_widget.add_widget(self.infobox_left)
         parent_widget.add_widget(board_nums_chars_input_space)
         parent_widget.add_widget(infobox_right)
@@ -350,26 +365,46 @@ class ChessBoard(Screen):
         self.popup_game_end = Popup(title='Depends', size_hint=(None, None), size=(300, 200),
                                     background_color=(1, 1, 1, 1), content=choice_boxes_game_end)
 
-    def voice_mode_loop(self, instance):
+    def voice_recognition_func(self, *args):
+        with sr.Microphone() as source:
+            audio = STT.listen(source)
+            try:
+                text = STT.recognize_google(audio, language='pl_PL')
+                TTS.say(text)
+                TTS.runAndWait()
+                self.voice_mode_func(text, True)
+            except sr.UnknownValueError:
+                TTS.say('Nie rozumiem, spróbuj ponownie')
+                TTS.runAndWait()
+            except sr.RequestError as e:
+                print('error:', e)
+
+    def voice_mode_func(self, instance, text_input=False):
         if self.voiced:
-            txt = instance.text
-            instance.text = ''
+            if text_input:
+                txt = instance
+            else:
+                txt = instance.text
+                instance.text = ''
             if txt == '':
                 pass
             from_square = process.extract(txt[0:2], square_names)
             to_square = process.extract(txt[2:], square_names)
 
-            if from_square[0][1] < 100 or to_square[0][1] < 100 or from_square[0][0] == to_square[0][0]:
-                pass
-            self.proposed_move = chess.Move.from_uci(from_square[0][0] + to_square[0][0])
+            # print(from_square, to_square)
 
-            if self.proposed_move in self.legal_moves:
-                self.chess_move(False, self.proposed_move)
-            elif chess.Move.from_uci(from_square[0][0] + to_square[0][0] + 'q') in self.legal_moves:
-                if self.board_sim.turn:
-                    self.popup_white_promotion.open()
-                else:
-                    self.popup_black_promotion.open()
+            if from_square[0][1] < 90 or to_square[0][1] < 90 or from_square[0][0] == to_square[0][0]:
+                pass
+            else:
+                self.proposed_move = chess.Move.from_uci(from_square[0][0] + to_square[0][0])
+
+                if self.proposed_move in self.legal_moves:
+                    self.chess_move(False, self.proposed_move)
+                elif chess.Move.from_uci(from_square[0][0] + to_square[0][0] + 'q') in self.legal_moves:
+                    if self.board_sim.turn:
+                        self.popup_white_promotion.open()
+                    else:
+                        self.popup_black_promotion.open()
 
     def on_request_close(self, *args, **kwargs):
         self.voiced = False
