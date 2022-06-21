@@ -67,6 +67,7 @@ WindowManager:
                 color: (1,1,1,1)
                 text:"nol"
                 on_press:
+                    root.voice_mode_change(0)
                     app.root.current = "chess_board"
                     root.manager.transition.direction = "left"
         GridLayout:
@@ -76,8 +77,9 @@ WindowManager:
             Button:
                 background_color: (0.47,0.3,0.2,1)
                 color: (1,1,1,1)
-                text:"nol"
+                text:"jes"
                 on_press:
+                    root.voice_mode_change(1)
                     app.root.current = "chess_board"
                     root.manager.transition.direction = "left"
 

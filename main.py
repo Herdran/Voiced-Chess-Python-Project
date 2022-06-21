@@ -1,6 +1,8 @@
 import chess
 import chess.engine
 
+from thefuzz import process
+
 from kivy.app import App
 from kivy.lang.builder import Builder
 from kivy.core.window import Window
@@ -13,6 +15,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.popup import Popup
+from kivy.uix.textinput import TextInput
 
 
 class MyButton(ButtonBehavior, Image):
@@ -82,6 +85,13 @@ initial_pos_dict = {'a1': 'R',
                     'h7': 'p',
                     }
 
+square_names = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8',
+                'c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8',
+                'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8',
+                'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8']
+
+promotions = ['q', 'b', 'n', 'r']
+
 
 def get_color(num, highlight=False, clicked=False):
     if clicked:
@@ -99,6 +109,11 @@ def get_color(num, highlight=False, clicked=False):
             return [1, 1, 1, 1]
         else:
             return [128 / 255, 128 / 255, 128 / 255, 1]
+
+
+def update_rect_pieces(instance, *args):
+    instance.rect.pos = instance.pos
+    instance.rect.size = instance.size
 
 
 def update_rect(instance, *args):
@@ -133,7 +148,11 @@ class WelcomeScreen(Screen):
 
 
 class VoiceModeChoice(Screen):
-    pass
+    def voice_mode_change(self, mode):
+        if mode:
+            self.manager.get_screen('chess_board').voiced = True
+        else:
+            self.manager.get_screen('chess_board').voiced = False
 
 
 def get_coords(board_coords):
@@ -155,9 +174,12 @@ class ChessBoard(Screen):
         self.curr_instance = None
         self.checked_king = None
         self.multiplayer = False
+        self.voiced = False
         self.engine = None
+        self.white_beaten = 0
+        self.black_beaten = 0
+        self.proposed_move = None
         Window.size = [1280, 720]
-        # Window.size = [800, 800]
         Window.bind(on_request_close=self.on_request_close)
 
         self.board = GridLayout(cols=8, spacing=0, size_hint=(.9, 1))
@@ -175,7 +197,6 @@ class ChessBoard(Screen):
 
                 btn.coords = coords
                 btn.piece = piece
-                # print(btn.canvas.children)
                 with btn.canvas.before:
                     curr_color = get_color(i + j + 1)
                     Color(curr_color[0], curr_color[1], curr_color[2], 1)
@@ -227,7 +248,7 @@ class ChessBoard(Screen):
         chars2.add_widget(Label(text='g'))
         chars2.add_widget(Label(text='h'))
 
-        board_nums_chars = GridLayout(cols=3, spacing=0, size_hint=(.64, 1))
+        board_nums_chars = GridLayout(cols=3, spacing=0, size_hint=(1, .95))
 
         board_nums_chars.add_widget(Label(text='', size_hint=(.05, .05)))
         board_nums_chars.add_widget(chars1)
@@ -239,11 +260,41 @@ class ChessBoard(Screen):
         board_nums_chars.add_widget(chars2)
         board_nums_chars.add_widget(Label(text='', size_hint=(.05, .05)))
 
-        infobox = BoxLayout(orientation='vertical', size_hint=(.36, 1))
+        board_nums_chars_input_space = BoxLayout(orientation='vertical', size_hint=(.54, 1))
+
+        text_input = TextInput(text='', multiline=False, size_hint=(1, .05))
+        text_input.bind(on_text_validate=self.voice_mode_loop)
+
+        board_nums_chars_input_space.add_widget(board_nums_chars)
+        board_nums_chars_input_space.add_widget(text_input)
+
+        self.infobox_left = BoxLayout(orientation='vertical', size_hint=(.23, 1))
+
+        beaten_figures_white = GridLayout(cols=4, spacing=0, size_hint=(1, .25))
+        beaten_figures_black = GridLayout(cols=4, spacing=0, size_hint=(1, .25))
+
+        for i in range(16):
+            beaten_figures_white.add_widget(Image(source=transparent_png_dir))
+            beaten_figures_black.add_widget(Image(source=transparent_png_dir))
+
+        empty_space = Image(source=transparent_png_dir, size_hint=(1, .5))
+
+        with self.infobox_left.canvas.before:
+            Color(128 / 255, 128 / 255, 128 / 255, 1)
+            self.infobox_left.rect = Rectangle(size=self.infobox_left.size, pos=self.infobox_left.pos)
+
+        self.infobox_left.bind(pos=update_rect_pieces, size=update_rect_pieces)
+
+        self.infobox_left.add_widget(beaten_figures_white)
+        self.infobox_left.add_widget(empty_space)
+        self.infobox_left.add_widget(beaten_figures_black)
+
+        infobox_right = BoxLayout(orientation='vertical', size_hint=(.23, 1))
 
         parent_widget = BoxLayout(orientation='horizontal')
-        parent_widget.add_widget(board_nums_chars)
-        parent_widget.add_widget(infobox)
+        parent_widget.add_widget(self.infobox_left)
+        parent_widget.add_widget(board_nums_chars_input_space)
+        parent_widget.add_widget(infobox_right)
 
         self.add_widget(parent_widget)
 
@@ -299,7 +350,29 @@ class ChessBoard(Screen):
         self.popup_game_end = Popup(title='Depends', size_hint=(None, None), size=(300, 200),
                                     background_color=(1, 1, 1, 1), content=choice_boxes_game_end)
 
+    def voice_mode_loop(self, instance):
+        if self.voiced:
+            txt = instance.text
+            instance.text = ''
+            if txt == '':
+                pass
+            from_square = process.extract(txt[0:2], square_names)
+            to_square = process.extract(txt[2:], square_names)
+
+            if from_square[0][1] < 100 or to_square[0][1] < 100 or from_square[0][0] == to_square[0][0]:
+                pass
+            self.proposed_move = chess.Move.from_uci(from_square[0][0] + to_square[0][0])
+
+            if self.proposed_move in self.legal_moves:
+                self.chess_move(False, self.proposed_move)
+            elif chess.Move.from_uci(from_square[0][0] + to_square[0][0] + 'q') in self.legal_moves:
+                if self.board_sim.turn:
+                    self.popup_white_promotion.open()
+                else:
+                    self.popup_black_promotion.open()
+
     def on_request_close(self, *args, **kwargs):
+        self.voiced = False
         if self.engine:
             self.end_engine()
 
@@ -326,6 +399,15 @@ class ChessBoard(Screen):
                 Color(curr_color[0], curr_color[1], curr_color[2], 1)
                 child.rect = Rectangle(size=child.size, pos=child.pos)
 
+        for child in self.infobox_left.children[0].children:
+            child.source = transparent_png_dir
+
+        for child in self.infobox_left.children[2].children:
+            child.source = transparent_png_dir
+
+        self.white_beaten = 0
+        self.black_beaten = 0
+
     def game_reset(self):
         self.board_sim.reset()
         self.board_rebuild()
@@ -333,6 +415,7 @@ class ChessBoard(Screen):
         self.legal_moves = list(self.board_sim.legal_moves)
 
     def game_end(self, instance):
+        self.voiced = False
         if instance.text == 'Main Menu':
             self.manager.current = 'welcome'
         self.game_reset()
@@ -342,7 +425,7 @@ class ChessBoard(Screen):
         self.promotion_type = instance.piece
         self.popup_white_promotion.dismiss()
         self.popup_black_promotion.dismiss()
-        self.chess_move()
+        self.chess_move(False, self.proposed_move)
 
     def highlight_recolor(self, matching, mode=False, clicked=False):
         for position in matching:
@@ -393,8 +476,13 @@ class ChessBoard(Screen):
             btn.highlight = Rectangle(size=btn.size, pos=btn.pos)
         btn.bind(pos=update_rect, size=update_rect)
 
-    def chess_move(self, bot=False):
-        if bot:
+    def chess_move(self, bot=False, move=None):
+        if move:
+            if self.promotion_type:
+                move = chess.Move.from_uci(chess.square_name(move.from_square) + chess.square_name(move.to_square) + self.promotion_type)
+            self.last_piece_pressed = self.board.children[get_coords(move.from_square)]
+            self.curr_instance = self.board.children[get_coords(move.to_square)]
+        elif bot:
             move = self.engine.play(self.board_sim, chess.engine.Limit(time=0.1)).move
             self.last_piece_pressed = self.board.children[get_coords(move.from_square)]
             self.curr_instance = self.board.children[get_coords(move.to_square)]
@@ -411,7 +499,13 @@ class ChessBoard(Screen):
         if self.promotion_type:
             self.last_piece_pressed.source = pieces_dict[
                 self.promotion_type.upper() if self.board_sim.turn else self.promotion_type]
-
+        if self.curr_instance.piece:
+            if self.board_sim.turn:
+                self.infobox_left.children[0].children[self.white_beaten].source = self.curr_instance.source
+                self.white_beaten += 1
+            else:
+                self.infobox_left.children[2].children[self.black_beaten + (4 * (3 - (self.black_beaten // 4) * 2))].source = self.curr_instance.source
+                self.black_beaten += 1
         self.curr_instance.source = self.last_piece_pressed.source
         self.last_piece_pressed.source = transparent_png_dir
 
@@ -437,6 +531,7 @@ class ChessBoard(Screen):
         self.last_piece_pressed.piece = None
         self.promotion = False
         self.last_piece_pressed = None
+        self.proposed_move = None
 
         if self.board_sim.outcome():
             if self.board_sim.outcome().winner:
@@ -471,7 +566,7 @@ class ChessBoard(Screen):
             matching = [s for s in self.legal_moves if instance.coords in str(s)[:2]]
             self.promotion = False
             if not matching:
-                self.highlight_recolor(self.colored_pieces)
+                self.highlight_recolor(self.colored_pieces, False)
                 self.highlight_recolor([instance.coords], False, True)
                 if self.last_piece_pressed:
                     self.highlight_recolor([self.last_piece_pressed.coords], False, True)
@@ -485,16 +580,17 @@ class ChessBoard(Screen):
                     self.last_piece_pressed = instance
                 elif self.last_piece_pressed == instance:
                     self.possible_moves = []
-                    self.highlight_recolor(matching)
+                    self.highlight_recolor(matching, False)
+                    self.highlight_recolor([instance.coords], True, True)
                     self.highlight_recolor([instance.coords], False, True)
                     self.last_piece_pressed = None
                 else:
-                    self.highlight_recolor(self.colored_pieces)
+                    self.highlight_recolor(self.colored_pieces, False)
+                    self.highlight_recolor([self.last_piece_pressed.coords], False, True)
                     self.colored_pieces = []
                     self.possible_moves = []
                     self.highlight_recolor(matching, True)
                     self.highlight_recolor([instance.coords], True, True)
-                    self.highlight_recolor([self.last_piece_pressed.coords], False, True)
                     self.last_piece_pressed = instance
 
 
