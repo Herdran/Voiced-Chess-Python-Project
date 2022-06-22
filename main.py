@@ -96,10 +96,10 @@ square_names = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'b1', 'b2', 'b3'
                 'e1', 'e2', 'e3', 'e4', 'e5', 'e6', 'e7', 'e8', 'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8',
                 'g1', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8']
 
-piece_names = ['pionek', 'pionka', 'pionkiem', 'pion', 'pionem', 'wieża', 'wieżę', 'wieżą', 'skoczek', 'skoczka',
-               'skoczkiem', 'koń', 'konia', 'koniem', 'konik', 'konikiem', 'goniec', 'gońca', 'gońcem', 'laufer',
-               'laufera', 'lauferem', 'biskup', 'biskupa', 'biskupem', 'królowa', 'królową', 'królówka', 'królówką',
-               'hetman', 'hetmana', 'hetmanem', 'król', 'króla', 'królem']
+# piece_names = ['pionek', 'pionka', 'pionkiem', 'pion', 'pionem', 'wieża', 'wieżę', 'wieżą', 'skoczek', 'skoczka',
+#                'skoczkiem', 'koń', 'konia', 'koniem', 'konik', 'konikiem', 'goniec', 'gońca', 'gońcem', 'laufer',
+#                'laufera', 'lauferem', 'biskup', 'biskupa', 'biskupem', 'królowa', 'królową', 'królówka', 'królówką',
+#                'hetman', 'hetmana', 'hetmanem', 'król', 'króla', 'królem']
 
 piece_names_dict = {'pionek': chess.PAWN, 'pionka': chess.PAWN, 'pionkiem': chess.PAWN, 'pion': chess.PAWN,
                     'pionem': chess.PAWN, 'wieża': chess.ROOK, 'wieżę': chess.ROOK, 'wieżą': chess.ROOK,
@@ -372,7 +372,7 @@ class ChessBoard(Screen):
         btn4_black.piece = 'r'
         btn4_black.bind(on_press=self.promotion_change)
         choice_boxes_black.add_widget(btn4_black)
-        self.popup_black_promotion = Popup(title='Choose promotion', size_hint=(None, None), size=(300, 200),
+        self.popup_black_promotion = Popup(title='Wybierz promocję', size_hint=(None, None), size=(300, 200),
                                            background_color=(1, 1, 1, 1), auto_dismiss=False,
                                            content=choice_boxes_black)
 
@@ -386,14 +386,16 @@ class ChessBoard(Screen):
         self.popup_game_end = Popup(title='Depends', size_hint=(None, None), size=(300, 150),
                                     background_color=(1, 1, 1, 1), content=choice_boxes_game_end)
 
+        self.no_microphone_error_popup = Popup(title='Nie wykryto mikrofonu', size_hint=(None, None), size=(300, 150),
+                                               background_color=(1, 1, 1, 1))
+
     def tmp_voice_thread_release(self, instance):
         instance.disabled = True
         self.event_obj.set()
 
-    # def voice_command_confirmation(self, instance):
-    #     instance.disabled = True
-    #     instance.text = ''
-    #     self.chess_move(False, self.proposed_move)
+    @mainthread
+    def no_microphone_error_popup_func(self):
+        self.no_microphone_error_popup.open()
 
     def voice_recognition_func(self):
         while True:
@@ -401,85 +403,89 @@ class ChessBoard(Screen):
             self.event_obj.wait()
             if self.request_close:
                 break
+            try:
+                self.request_close_wait = True
+                with sr.Microphone() as source:
+                    try:
+                        audio = STT.listen(source, timeout=3, phrase_time_limit=3)
+                        text = STT.recognize_google(audio, language='pl_PL')
+                        text.replace(' ', '')
 
-            self.request_close_wait = True
-            with sr.Microphone() as source:
-                try:
-                    audio = STT.listen(source, timeout=3, phrase_time_limit=3)
-                    text = STT.recognize_google(audio, language='pl_PL')
+                        from_square = process.extract(text[0:2], square_names)
+                        piece_name = process.extract(text, list(piece_names_dict.keys()))
+                        to_square = process.extract(text[2:], square_names)
+                        promotion = process.extract(text[4:], promotion_names)
+                        if promotion[0][1] < 100:
+                            promotion = ''
+                        else:
+                            promotion = promotion[0][0]
 
-                    from_square = process.extract(text[0:2], square_names)
-                    piece_name = process.extract(text, piece_names)
-                    to_square = process.extract(text[2:], square_names)
-                    promotion = process.extract(text[4:], promotion_names)
-                    if promotion[0][1] < 100:
-                        promotion = ''
-                    else:
-                        promotion = promotion[0][0]
+                        if (from_square[0][1] < 90 and piece_name[0][1] < 90) or to_square[0][1] < 90 \
+                                or from_square[0][0] == to_square[0][0]:
+                            pass
+                            # TTS.say('Nie rozumiem')
+                            # TTS.runAndWait()
+                        else:
+                            if piece_name[0][1] >= 90 and to_square[0][1] >= 90:
+                                possible_pieces = list(
+                                    self.board_sim.pieces(piece_names_dict[piece_name[0][0]], self.board_sim.turn))
 
-                    if (from_square[0][1] < 90 and piece_name[0][1] < 90) or to_square[0][1] < 90 \
-                            or from_square[0][0] == to_square[0][0]:
-                        pass
-                        # TTS.say('Nie rozumiem')
-                        # TTS.runAndWait()
-                    else:
-                        if piece_name[0][1] >= 90 and to_square[0][1] >= 90:
-                            possible_pieces = list(
-                                self.board_sim.pieces(piece_names_dict[piece_name[0][0]], self.board_sim.turn))
+                                matching = []
 
-                            matching = []
+                                for square_with_piece in possible_pieces:
+                                    tmp = [str(s)[:2] for s in self.legal_moves if
+                                           chess.square_name(square_with_piece) in str(s)[:2]
+                                           and to_square[0][0] in str(s)[2:4]]
+                                    if tmp:
+                                        matching.append(tmp[0])
 
-                            for square_with_piece in possible_pieces:
-                                tmp = [str(s)[:2] for s in self.legal_moves if
-                                       chess.square_name(square_with_piece) in str(s)[:2]
-                                       and to_square[0][0] in str(s)[2:4]]
-                                if tmp:
-                                    matching.append(tmp[0])
+                                if len(matching) > 1:
+                                    TTS.say('Sprecyzuj lokalizację figury')
+                                    TTS.runAndWait()
+                                    audio = STT.listen(source, timeout=3, phrase_time_limit=3)
+                                    text = STT.recognize_google(audio, language='pl_PL')
+                                    # text = 'e3'
+                                    # print(text)
+                                    from_square = process.extract(text, square_names)
+                                    if from_square[0][1] < 90 or from_square[0][0] == to_square[0][0]:
+                                        break
+                                        # TTS.say('Nie rozumiem, spróbuj ponownie2')
+                                        # TTS.runAndWait()
+                                elif len(matching) == 1:
+                                    from_square = [[matching[0][:2]]]  # just don't question it
 
-                            if len(matching) > 1:
-                                TTS.say('Sprecyzuj lokalizację figury')
-                                TTS.runAndWait()
-                                audio = STT.listen(source, timeout=3, phrase_time_limit=3)
-                                text = STT.recognize_google(audio, language='pl_PL')
-                                # text = 'e3'
-                                # print(text)
-                                from_square = process.extract(text, square_names)
-                                if from_square[0][1] < 90 or from_square[0][0] == to_square[0][0]:
-                                    break
-                                    # TTS.say('Nie rozumiem, spróbuj ponownie2')
-                                    # TTS.runAndWait()
-                            elif len(matching) == 1:
-                                from_square = [[matching[0][:2]]]  # just don't question it
+                            self.proposed_move = chess.Move.from_uci(from_square[0][0] + to_square[0][0] + promotion)
 
-                        self.proposed_move = chess.Move.from_uci(from_square[0][0] + to_square[0][0] + promotion)
-
-                        if self.proposed_move in self.legal_moves:
-                            # self.voice_command_confirmation_button.text = str(self.proposed_move)
-                            # self.voice_command_confirmation_button.disabled = False
-                            # pass
-                            self.chess_move(False, self.proposed_move)
-                        elif promotion == '' and chess.Move.from_uci(
-                                from_square[0][0] + to_square[0][0] + 'q') in self.legal_moves:
-                            TTS.say('Wybierz promocję')
-                            TTS.runAndWait()
-                            audio = STT.listen(source, timeout=3, phrase_time_limit=3)
-                            text = STT.recognize_google(audio, language='pl_PL')
-                            promotion = process.extract(text, piece_names)
-                            if promotion[0][1] >= 90:
-                                self.promotion_type = chess.piece_symbol(piece_names_dict[promotion[0][0]])
-                                # self.voice_command_confirmation_button.text = str(self.proposed_move) + self.promotion_type
+                            if self.proposed_move in self.legal_moves:
+                                # self.voice_command_confirmation_button.text = str(self.proposed_move)
                                 # self.voice_command_confirmation_button.disabled = False
                                 # pass
                                 self.chess_move(False, self.proposed_move)
-                except sr.UnknownValueError:
-                    TTS.say('Nie rozumiem')
-                    TTS.runAndWait()
-                except sr.RequestError as e:
-                    pass
-                    # print('error:', e)
+                            elif promotion == '' and chess.Move.from_uci(
+                                    from_square[0][0] + to_square[0][0] + 'q') in self.legal_moves:
+                                TTS.say('Wybierz promocję')
+                                TTS.runAndWait()
+                                audio = STT.listen(source, timeout=3, phrase_time_limit=3)
+                                text = STT.recognize_google(audio, language='pl_PL')
+                                promotion = process.extract(text, list(piece_names_dict.keys()))
+                                if promotion[0][1] >= 90:
+                                    self.promotion_type = chess.piece_symbol(piece_names_dict[promotion[0][0]])
+                                    # self.voice_command_confirmation_button.text = str(self.proposed_move) + self.promotion_type
+                                    # self.voice_command_confirmation_button.disabled = False
+                                    # pass
+                                    self.chess_move(False, self.proposed_move)
+                    except sr.UnknownValueError:
+                        TTS.say('Nie rozumiem')
+                        TTS.runAndWait()
+                    except sr.RequestError as e:
+                        pass
+                        # print('error:', e)
+            except OSError:
+                self.no_microphone_error_popup_func()
 
             self.request_close_wait = False
             self.tmp_speech_button.disabled = False
+
 
     def text_input(self, instance):
         txt = instance.text
