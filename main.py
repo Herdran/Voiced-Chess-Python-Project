@@ -383,7 +383,7 @@ class ChessBoard(Screen):
         btn2 = Button(text='Restart', background_normal='', background_color=(0.47, 0.3, 0.2, 1))
         btn2.bind(on_press=self.game_end)
         choice_boxes_game_end.add_widget(btn2)
-        self.popup_game_end = Popup(title='Depends', size_hint=(None, None), size=(300, 200),
+        self.popup_game_end = Popup(title='Depends', size_hint=(None, None), size=(300, 150),
                                     background_color=(1, 1, 1, 1), content=choice_boxes_game_end)
 
     def tmp_voice_thread_release(self, instance):
@@ -551,6 +551,7 @@ class ChessBoard(Screen):
 
     def game_end(self, instance):
         if instance.text == 'Main Menu':
+            self.manager.transition.direction = "left"
             self.manager.current = 'welcome'
         self.game_reset()
         self.popup_game_end.dismiss()
